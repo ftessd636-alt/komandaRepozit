@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Shop - Team 4 (Testing Lab)</title>
+    <style>
+        /* UI BUG: При очень узком экране заголовок и кнопки накладываются друг на друга */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; background: #f4f4f4; min-width: 300px; }
+        .container { display: flex; width: 100%; height: 100vh; }
+        
+        .products-alt, .cart-section { padding: 20px; flex: 1; }
+        .products-alt { background: #fff; border-right: 2px solid #ddd; }
+        .cart-section { background: #fafafa; }
+
+        .item { 
+            border: 1px solid #eee; 
+            margin-bottom: 10px; 
+            padding: 15px; 
+            display: flex; 
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+        }
+
+        .cart-item {
+            background: #fff;
+            padding: 10px;
+            margin-bottom: 5px;
+            border-left: 5px solid #ff4757;
+            /* UI BUG: Текст может выходить за границы блока, если название товара длинное */
+            white-space: nowrap; 
+        }
+
+        button {
+            background: #2ed573;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        button.delete-btn { background: #ff4757; margin-left: 10px; }
+        
+        .total-block {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-top: 20px;
+            color: #2f3542;
+        }
+
+        /* README СТИЛИ */
+        .readme-overlay {
+            position: fixed; bottom: 10px; right: 10px; 
+            background: #2f3542; color: white; padding: 10px; 
+            border-radius: 5px; font-size: 12px; cursor: help;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="products-alt">
+        <h2>Каталог товаров</h2>
+        <div class="item">
+            <span>Игровой монитор — 25000 руб.</span>
+            <button onclick="addItem('Монитор', 25000)">В корзину</button>
+        </div>
+        <div class="item">
+            <span>Мышь беспроводная — 3500 руб.</span>
+            <button onclick="addItem('Мышь', 3500)">В корзину</button>
+        </div>
+        <div class="item">
+            <span>Клавиатура RGB — 7000 руб.</span>
+            <button onclick="addItem('Клавиатура', 7000)">В корзину</button>
+        </div>
+    </div>
+
+    <div class="cart-section">
+        <h2>Ваша корзина</h2>
+        <div id="cart-list">
+            </div>
+        <div class="total-block">
+            Итого: <span id="total-price">100</span> руб. 
+            </div>
+        <br>
+        <button onclick="location.reload()" style="background: #1e90ff;">Обновить страницу</button>
+    </div>
+</div>
+
+<div class="readme-overlay" onclick="alert('README:\n1. Добавляйте товары кнопкой.\n2. Удаляйте кнопкой Удалить.\n3. Проверяйте итоговую сумму.\n4. Ищите ошибки в Console (F12)!')">
+    📄 README (Инструкция)
+</div>
+
+<script>
+    // Инициализация данных
+    let cart = [];
+    let totalPrice = 100; // BUG: Неверная начальная сумма
+
+    function addItem(name, price) {
+        // BUG: Дублирование товаров (каждое нажатие создает новый объект вместо увеличения qty)
+        // BUG: Неверное количество (скрипт прибавляет +2 к визуальному счетчику ниже)
+        const product = {
+            id: Math.random(),
+            name: name,
+            price: price,
+            quantity: 2 // BUG: Всегда добавляется 2 штуки вместо 1
+        };
+
+        cart.push(product);
+        console.log("Товар добавлен:", name);
+        updateUI();
+    }
+
+    function removeItem(id) {
+        // BUG: Товар не удаляется. Лог идет, но фильтрация массива не сохраняется в переменную cart
+        console.warn("Попытка удаления товара с ID:", id);
+        cart.filter(item => item.id !== id); 
+        
+        // BUG: Нет обработки ошибок. Если функция упадет, пользователь не узнает об этом.
+        updateUI();
+    }
+
+    function updateUI() {
+        const listElement = document.getElementById('cart-list');
+        listElement.innerHTML = '';
+
+        // BUG: Ошибка при пустой корзине. Если корзина пуста, скрипт пытается 
+        // достучаться до несуществующего элемента .status-info
+        if (cart.length === 0) {
+            document.querySelector('.status-info').innerHTML = "Корзина пуста";
+        }
+
+        cart.forEach((item) => {
+            const el = document.createElement('div');
+            el.className = 'cart-item';
+            el.innerHTML = `
+                <span>${item.name} (x${item.quantity}) — ${item.price} руб.</span>
+                <button class="delete-btn" onclick="removeItem(${item.id})">Удалить</button>
+            `;
+            listElement.appendChild(el);
+
+            // BUG: Неверный расчет суммы (сумма просто прибавляется при каждом рендере, 
+            // не очищая старое значение totalPrice корректно)
+            totalPrice += item.price;
+        });
+
+        document.getElementById('total-price').innerText = totalPrice;
+    }
+
+    // BUG: Ошибка при обновлении страницы. 
+    // Данные не сохраняются в LocalStorage, хотя в консоли мы имитируем сохранение.
+    window.onbeforeunload = function() {
+        console.log("Данные успешно сохранены в БД..."); 
+        // На самом деле сохранения нет.
+    };
+
+    // Глобальная ошибка для Postman/API (имитация отсутствия обработки ошибок)
+    function mockApiCall() {
+        throw new Error("API Connection Failed: 500");
+    }
+</script>
+
+</body>
+</html>
